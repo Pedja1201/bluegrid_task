@@ -47,18 +47,33 @@ const transformData = (data: string[]): FileStructure => {
 
 router.get('/files', async (req: Request, res: Response) => {
   try {
+    console.log('Received request for /files');
+    
     const cachedData = cache.get('files');
     if (cachedData) {
+      console.log('Serving from cache');
       return res.json(cachedData);
     }
 
+    console.log('Fetching data from external API:', EXTERNAL_API_URL);
     const response = await axios.get(EXTERNAL_API_URL);
-    const transformedData = transformData(response.data);
+    const urls = response.data.items.map((item: any) => item.fileUrl);
+    console.log('Data fetched from external API:', urls);
+
+    const transformedData = transformData(urls);
     cache.set('files', transformedData);
     
     res.json(transformedData);
   } catch (error) {
-    console.error(error);
+    const err = error as any; // Explicitly cast the error to any type
+    console.error('Error fetching data:', err.message);
+    if (err.response) {
+      console.error('Response data:', err.response.data);
+      console.error('Response status:', err.response.status);
+      console.error('Response headers:', err.response.headers);
+    } else if (err.request) {
+      console.error('Request data:', err.request);
+    }
     res.status(500).send('Error fetching data');
   }
 });
